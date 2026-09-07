@@ -1,0 +1,95 @@
+{
+  "name": "river-club",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "River Club - Texas Hold'em for every screen",
+  "main": "desktop/main.cjs",
+  "author": "River Club",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "server": "npm run server:build && node dist-server/index.js",
+    "server:build": "esbuild server/index.ts server/room-worker.ts --bundle --platform=node --format=esm --packages=external --outdir=dist-server",
+    "build": "tsc --noEmit && vite build && tsx scripts/service-worker.ts && npm run server:build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "desktop": "npm run build && electron .",
+    "desktop:pack": "npm run build && electron-builder --publish never",
+    "mobile:sync": "npm run build && cap sync",
+    "android:debug": "npm run mobile:sync && cd android && ./gradlew assembleDebug",
+    "ios:simulator": "npm run mobile:sync && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -derivedDataPath build/ios CODE_SIGNING_ALLOWED=NO build",
+    "assets": "tsx scripts/assets.ts"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@fastify/cors": "^11.0.0",
+    "fastify": "^5.0.0",
+    "lucide-react": "^0.468.0",
+    "motion": "^12.0.0",
+    "poker-ts": "1.5.0",
+    "pokersolver": "2.1.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "socket.io": "^4.8.0",
+    "socket.io-client": "^4.8.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0",
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^40.0.0",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.25.0",
+    "sharp": "^0.34.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^6.1.0",
+    "vitest": "^3.2.0"
+  },
+  "build": {
+    "appId": "com.riverclub.poker",
+    "productName": "River Club",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "desktop/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.card-games",
+      "icon": "public/icon.png"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Game",
+      "icon": "public/icon.png"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-server
+build
+release
+test-results
+playwright-report
+android
+ios
+.git
+.env*

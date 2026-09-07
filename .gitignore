@@ -1,3 +1,19 @@
+node_modules/
+dist/
+dist-server/
+release/
+build/
+test-results/
+playwright-report/
+.DS_Store
+*.log
+.env
+android/.gradle/
+android/local.properties
+android/**/build/
+ios/App/Pods/
+ios/App/App/public/
+ios/App/App/capacitor.config.json
 # Dependencies
 node_modules/
 .npm

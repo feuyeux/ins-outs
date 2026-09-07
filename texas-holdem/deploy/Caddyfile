@@ -1,0 +1,16 @@
+{$SITE_ADDRESS::80} {
+  encode zstd gzip
+  handle /socket.io/* {
+    reverse_proxy server:3001
+  }
+  handle /health {
+    reverse_proxy server:3001
+  }
+  handle {
+    root * /srv
+    try_files {path} /index.html
+    file_server
+    header /sw.js Cache-Control "no-cache"
+    header /index.html Cache-Control "no-cache"
+  }
+}
