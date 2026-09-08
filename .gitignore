@@ -43,3 +43,4 @@ yarn-error.log*
 # Local test artifacts
 test_chrome.png
 *.local.png
+.qoder/

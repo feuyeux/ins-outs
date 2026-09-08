@@ -1,0 +1,996 @@
+/* ============================================================
+   Chroma Lab — 全部视觉均由 CSS / 内联 SVG 绘制，无图片资源。
+   视觉母题：实验台上的试剂瓶。深墨蓝底 + 蓝图网格 + 青柠色高光，
+   与糖果风的同类产品刻意拉开距离。
+   ============================================================ */
+
+:root {
+  /* 背景：深墨蓝实验台 */
+  --bg-top: #0f2033;
+  --bg-bottom: #0a1626;
+  --panel: #16293d;
+  --panel-soft: rgba(255, 255, 255, 0.06);
+  --text-primary: #eaf3fb;
+  --text-muted: #7f95ae;
+  --line: rgba(120, 200, 220, 0.09);
+  --glass-edge: rgba(190, 230, 245, 0.32);
+  --glass-body: rgba(200, 235, 250, 0.05);
+  --accent: #4de3c8;
+  --accent-warm: #ffc233;
+  --danger: #ff7a7a;
+
+  /* 瓶子尺寸上限与身形比例，实际尺寸在 .board 里按关卡规模算出 */
+  --bottle-w-max: 66px;
+  --bottle-ratio: 2.9;
+  --tall-w: clamp(30px, 8vw, 46px);
+  /* 顶栏 + 操作栏 + 安全区大致占用的竖向空间，用于反推瓶高 */
+  --chrome-h: 196px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  color: var(--text-primary);
+  /* 依次覆盖 iOS / Android / Windows 的中文字族，避免各端字重与字距不一致 */
+  font-family: 'Nunito', 'Baloo 2', 'PingFang SC', 'Hiragino Sans GB',
+    'HarmonyOS Sans SC', 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei',
+    'Droid Sans Fallback', system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  /* 移动端禁止长按选中与双击缩放，保证点击手感；iOS WKWebView 需要 -webkit- 前缀 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  /* 避免 iOS 横竖屏切换时自动放大字号 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+#root {
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+button {
+  font-family: inherit;
+  font-weight: 800;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.38;
+}
+
+/* 键盘操作时提供高对比焦点，不干扰触屏点击的视觉效果 */
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.bottle:focus-visible {
+  outline-offset: 5px;
+}
+
+svg {
+  display: block;
+}
+
+/* ============ 应用骨架 ============ */
+
+.app {
+  position: relative;
+  /* 旧版 WebView 不认 dvh，先给 vh 兜底再逐步增强 */
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: max(10px, env(safe-area-inset-top)) 12px
+    max(10px, env(safe-area-inset-bottom));
+  overflow: hidden;
+}
+
+/* 实验台背景：蓝图网格 + 顶部冷光，取代同类产品常见的糖果色光晕 */
+.app__backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(
+      110% 60% at 50% -10%,
+      rgba(77, 227, 200, 0.16) 0%,
+      rgba(77, 227, 200, 0) 60%
+    ),
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 34px, 34px 100%;
+}
+
+.app__stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+/* ============ 顶栏与标识 ============ */
+
+.topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 2px 0;
+}
+
+.logo {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo__mark {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+}
+
+.logo__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+  letter-spacing: 2.4px;
+}
+
+.logo__name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.logo__sub {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 5.6px;
+}
+
+.topbar__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 3px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-primary);
+  background: var(--panel-soft);
+  border: 1px solid rgba(190, 230, 245, 0.14);
+  white-space: nowrap;
+}
+
+.chip--level {
+  color: #06231f;
+  background: linear-gradient(180deg, #6ef0d6 0%, #33c9ad 100%);
+  border-color: transparent;
+}
+
+.chip--unknown {
+  color: #2a2410;
+  background: linear-gradient(180deg, #ffd873 0%, #f0b01f 100%);
+  border-color: transparent;
+}
+
+.chip--ghost {
+  color: var(--text-muted);
+  background: none;
+  border-color: rgba(190, 230, 245, 0.12);
+}
+
+/* 归位进度条：细长一条，压在关卡信息下方 */
+.topbar__progress {
+  position: relative;
+  margin-top: 7px;
+  height: 5px;
+  max-width: 280px;
+  border-radius: 999px;
+  background: rgba(190, 230, 245, 0.12);
+  overflow: hidden;
+}
+
+.topbar__progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2f8ff0 0%, #4de3c8 100%);
+  transition: width 0.45s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+/* 关卡切换 */
+.levelnav {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.levelnav__btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: var(--text-primary);
+  background: var(--panel-soft);
+  border: 1px solid rgba(190, 230, 245, 0.16);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.levelnav__btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.levelnav__btn:active:not(:disabled) {
+  transform: scale(0.9);
+  background: rgba(77, 227, 200, 0.16);
+}
+
+/* 仅供屏幕阅读器的播报区域 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 渲染异常兜底页面 */
+.fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+}
+
+/* ============ 瓶阵：严格格点 ============ */
+
+/*
+ * 尺寸是「算」出来的，不是按断点猜的：
+ * 列数与行数由本关瓶数决定，通过内联 CSS 变量传进来，
+ * 瓶宽取「按列数均分可用宽度」与最大宽度的较小值，瓶高再受可用高度约束。
+ * 于是任何关卡（4~17 个容器）都能一屏放下，且行列始终对齐格点。
+ */
+.board {
+  --gap-x: clamp(4px, 1.8vw, 14px);
+  --gap-y: clamp(5px, 1.4vh, 12px);
+  --avail-w: calc(
+    100vw - 26px - var(--tall-w) - var(--gap-x) * var(--side-cols) * 2
+  );
+  --bottle-w: min(
+    var(--bottle-w-max),
+    calc(var(--avail-w) / (var(--side-cols) * 2))
+  );
+  --bottle-h: min(
+    calc(var(--bottle-w) * var(--bottle-ratio)),
+    calc((100dvh - var(--chrome-h)) / var(--rows) - var(--gap-y))
+  );
+
+  display: grid;
+  justify-content: center;
+  align-content: center;
+  column-gap: var(--gap-x);
+  row-gap: var(--gap-y);
+  max-width: 100%;
+}
+
+/* 每个格点：瓶底压在同一条基线上，保证「横平竖直」 */
+.board__cell {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.board__cell--center {
+  align-items: stretch;
+}
+
+/* ============ 试剂瓶 ============ */
+
+.bottle {
+  position: relative;
+  width: var(--bottle-w);
+  height: var(--bottle-h);
+  padding: 0;
+  display: block;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: bottom center;
+}
+
+.bottle--selected {
+  transform: translateY(-20px);
+  z-index: 3;
+}
+
+.bottle--hint-from {
+  animation: hint-bounce 0.9s ease-in-out infinite;
+}
+
+.bottle--hint-to {
+  animation: hint-pulse 0.9s ease-in-out infinite;
+}
+
+.bottle--rejected {
+  animation: shake 0.32s ease-in-out;
+}
+
+.bottle--pouring-from {
+  transform: translateY(-28px) rotate(-11deg);
+  z-index: 4;
+}
+
+.bottle--complete .bottle__glass {
+  box-shadow:
+    inset 0 0 0 1.5px rgba(77, 227, 200, 0.5),
+    0 0 14px rgba(77, 227, 200, 0.22);
+}
+
+/* 瓶颈 */
+.bottle__neck {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42%;
+  height: 24px;
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(
+    100deg,
+    rgba(190, 230, 245, 0.04) 0%,
+    rgba(190, 230, 245, 0.24) 26%,
+    rgba(190, 230, 245, 0.05) 52%,
+    rgba(190, 230, 245, 0.15) 100%
+  );
+  border: 1.5px solid var(--glass-edge);
+  border-bottom: none;
+}
+
+/* 瓶口环 */
+.bottle__lip {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50%;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(
+    180deg,
+    rgba(220, 245, 255, 0.42),
+    rgba(190, 230, 245, 0.1)
+  );
+  border: 1.5px solid var(--glass-edge);
+}
+
+/* 瓶身：液体容器 */
+.bottle__glass {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 21px;
+  border-radius: 6px 6px 14px 14px;
+  border: 1.5px solid var(--glass-edge);
+  background: var(--glass-body);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column-reverse;
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
+}
+
+/* 量筒刻度：压在液体之上，一眼能数出层数 */
+.bottle__ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+/* 单层液体 */
+.layer {
+  position: relative;
+  flex: none;
+  transition: height 0.28s ease, background 0.28s ease;
+}
+
+/* 顶层液面：椭圆高光 */
+.layer__surface {
+  position: absolute;
+  top: -5px;
+  left: 4%;
+  right: 4%;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* 未知色层：毛玻璃灰 + 问号 */
+.layer--unknown {
+  display: grid;
+  place-items: center;
+}
+
+.layer__mark {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(234, 243, 251, 0.75);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+/* 瓶身竖向高光条 */
+.bottle__gloss {
+  position: absolute;
+  top: 28px;
+  left: 11%;
+  width: 10%;
+  height: 56%;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(235, 250, 255, 0.42),
+    rgba(235, 250, 255, 0.03)
+  );
+  pointer-events: none;
+  filter: blur(0.6px);
+}
+
+.bottle__gloss--right {
+  left: auto;
+  right: 9%;
+  width: 5%;
+  height: 38%;
+  opacity: 0.38;
+}
+
+/* 装饰：木塞 */
+.bottle__cork {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 38%;
+  height: 18px;
+  border-radius: 5px 5px 3px 3px;
+  background: linear-gradient(180deg, #e8c79a 0%, #cfa26a 55%, #a87f47 100%);
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.45), 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* 装饰：容量标签（贴在中央大瓶瓶身上的实验室标签） */
+.bottle__label {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  min-width: 22px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  color: #06231f;
+  background: linear-gradient(180deg, #eafff9 0%, #a9e9dc 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+/* 完成封签：瓶口盖上带勾的封条 */
+.bottle__seal {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #06231f;
+  background: linear-gradient(180deg, #6ef0d6 0%, #2ec2a6 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  animation: seal-pop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bottle__seal svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ============ 中央大瓶 ============ */
+
+.bottle--tall {
+  width: var(--tall-w);
+  height: 100%;
+}
+
+.bottle--tall .bottle__neck {
+  width: 56%;
+  height: 20px;
+}
+
+.bottle--tall .bottle__lip {
+  width: 66%;
+}
+
+.bottle--tall .bottle__glass {
+  top: 18px;
+  border-radius: 5px 5px 16px 16px;
+}
+
+.bottle--tall .layer__surface {
+  top: -4px;
+  height: 8px;
+}
+
+.bottle--tall .layer__mark {
+  font-size: 11px;
+}
+
+.bottle--tall .bottle__gloss {
+  top: 26px;
+  left: 15%;
+  width: 14%;
+  height: 70%;
+}
+
+.bottle--tall .bottle__gloss--right {
+  left: auto;
+  right: 11%;
+  width: 7%;
+  height: 44%;
+}
+
+/* 大瓶体积大，选中时上浮幅度收一点，避免顶穿顶栏 */
+.bottle--tall.bottle--selected {
+  transform: translateY(-10px);
+}
+
+.bottle--tall.bottle--pouring-from {
+  transform: translateY(-12px) rotate(-5deg);
+}
+
+/* ============ 底部操作栏 ============ */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 5vw, 30px);
+  padding: 8px 4px max(4px, env(safe-area-inset-bottom));
+}
+
+.tool {
+  min-width: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.tool:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.tool__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--text-primary);
+  background: linear-gradient(180deg, #1d3550 0%, #142639 100%);
+  border: 1px solid rgba(190, 230, 245, 0.14);
+  box-shadow: inset 0 1px 0 rgba(235, 250, 255, 0.16), 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.tool__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.tool--primary .tool__icon {
+  color: #06231f;
+  background: linear-gradient(180deg, #6ef0d6 0%, #2ec2a6 100%);
+  border-color: transparent;
+}
+
+.tool--primary {
+  color: var(--accent);
+}
+
+/* ============ 遮罩层 ============ */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 16, 27, 0.76);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: fade-in 0.24s ease;
+}
+
+.card {
+  width: min(340px, 100%);
+  border-radius: 20px;
+  padding: 26px 22px 20px;
+  text-align: center;
+  background: linear-gradient(180deg, #1b334c 0%, #132437 100%);
+  border: 1px solid rgba(190, 230, 245, 0.14);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  animation: pop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.card__badge {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 12px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.card__badge svg {
+  width: 30px;
+  height: 30px;
+}
+
+.card__badge--win {
+  color: #06231f;
+  background: linear-gradient(180deg, #6ef0d6 0%, #2ec2a6 100%);
+}
+
+.card__badge--stuck {
+  color: #2b1414;
+  background: linear-gradient(180deg, #ffb1b1 0%, #ff7a7a 100%);
+}
+
+.card__title {
+  margin: 0 0 6px;
+  font-size: 23px;
+  font-weight: 800;
+}
+
+.card__text {
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #a8bed4;
+  line-height: 1.55;
+}
+
+.card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn {
+  flex: 1 1 44%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: rgba(190, 230, 245, 0.1);
+  border: 1px solid rgba(190, 230, 245, 0.16);
+  transition: transform 0.15s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* ============ 声音设置 ============ */
+
+.audio-overlay {
+  z-index: 30;
+}
+
+.audio-panel {
+  position: relative;
+  width: min(360px, 100%);
+  border-radius: 22px;
+  padding: 24px 22px 22px;
+  background: linear-gradient(180deg, #1b334c 0%, #132437 100%);
+  border: 1px solid rgba(190, 230, 245, 0.16);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  animation: pop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.audio-panel__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  background: rgba(190, 230, 245, 0.08);
+  border: 1px solid rgba(190, 230, 245, 0.12);
+}
+
+.audio-panel__close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.audio-panel__icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 10px;
+  border-radius: 17px;
+  display: grid;
+  place-items: center;
+  color: #06231f;
+  background: linear-gradient(180deg, #6ef0d6 0%, #2ec2a6 100%);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.audio-panel__icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.audio-panel__title {
+  margin: 0;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.audio-panel__text {
+  margin: 5px 0 18px;
+  text-align: center;
+  color: #a8bed4;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.audio-control {
+  padding: 14px;
+  border-radius: 15px;
+  background: rgba(190, 230, 245, 0.065);
+  border: 1px solid rgba(190, 230, 245, 0.1);
+}
+
+.audio-control + .audio-control {
+  margin-top: 11px;
+}
+
+.audio-control--muted .audio-control__label,
+.audio-control--muted .audio-control__value {
+  color: #7e93a8;
+}
+
+.audio-control__header {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 11px;
+}
+
+.audio-control__label {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.audio-control__value {
+  min-width: 38px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.audio-control__mute {
+  min-width: 54px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  color: var(--text-primary);
+  background: rgba(190, 230, 245, 0.1);
+  border: 1px solid rgba(190, 230, 245, 0.14);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.audio-control__mute[aria-pressed='true'] {
+  color: #ffd3d3;
+  background: rgba(255, 122, 122, 0.14);
+  border-color: rgba(255, 122, 122, 0.3);
+}
+
+.audio-control__range {
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.audio-control__range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2ec2a6, #6ef0d6);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.audio-control__range::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 50%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #e9fbff;
+  border: 3px solid #2ec2a6;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.4);
+}
+
+.audio-control__range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2ec2a6, #6ef0d6);
+}
+
+.audio-control__range::-moz-range-thumb {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #e9fbff;
+  border: 3px solid #2ec2a6;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.4);
+}
+
+.btn--primary {
+  color: #06231f;
+  background: linear-gradient(180deg, #6ef0d6 0%, #2ec2a6 100%);
+  border-color: transparent;
+}
+
+/* ============ 动画 ============ */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.82) translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes seal-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+
+@keyframes hint-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-13px);
+  }
+}
+
+@keyframes hint-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.4);
+  }
+}
+
+/* 尊重系统的减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 小屏适配：只调尺寸上限，具体尺寸仍由 .board 按关卡规模算 */
+@media (max-height: 720px) {
+  :root {
+    --bottle-w-max: 58px;
+    --chrome-h: 176px;
+  }
+}
+
+@media (max-width: 400px) {
+  :root {
+    --bottle-w-max: 54px;
+  }
+}
